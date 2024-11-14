@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>휘매쓰 연산챌린지!</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f0f0;
+        }
+        #game-container {
+            max-width: 400px;
+            margin: auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        #energy-bar {
+            width: 100%;
+            height: 20px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        #energy {
+            height: 100%;
+            background: #76c7c0;
+            width: 100%;
+        }
+        #question-table {
+            width: 100%;
+            font-size: 24px;
+            margin: 20px 0;
+            border-spacing: 5px;
+            text-align: right;
+        }
+        #reward {
+            font-size: 18px;
+            color: #ff5733;
+            margin: 10px;
+        }
+        #difficulty-select, #game-end, #game-time {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <h1>휘매쓰연산챌린지!</h1>
+    <div id="difficulty-select">
+        <h2>난이도를 선택하세요:</h2>
+        <button onclick="startGame('easy')">하 (시간 제한 없음)</button>
+        <button onclick="startGame('medium')">중 (40초)</button>
+        <button onclick="startGame('hard')">상 (30초)</button>
+        <button onclick="startGame('very-hard')">최상 (20초)</button>
+    </div>
+
+    <div id="game-area">
+        <h2>문제를 푸세요:</h2>
+        <table id="question-table">
+            <tr>
+                <td></td><td id="hundreds-1"></td><td id="tens-1"></td><td id="units-1"></td>
+            </tr>
+            <tr>
+                <td id="operation"></td><td id="hundreds-2"></td><td id="tens-2"></td><td id="units-2"></td>
+            </tr>
+            <tr><td colspan="4"><hr></td></tr>
+        </table>
+        <input type="number" id="answer" placeholder="답 입력" onkeypress="if(event.key==='Enter'){checkAnswer();}">
+        <button onclick="checkAnswer()">제출</button>
+
+        <div id="energy-bar">
+            <div id="energy"></div>
+        </div>
+        <div id="reward"></div>
+        <p>남은 기회: <span id="lives">3</span></p>
+        <p>점수: <span id="score">0</span></p>
+    </div>
+
+    <div id="game-time">전체 게임 시간: <span id="elapsed-time">0</span> 초</div>
+    <div id="game-end">
+        <h2>게임 종료</h2>
+        <button onclick="location.reload()">다시 시작</button>
+    </div>
+</div>
+
+<script>
+    let timer, elapsedTimer;
+    let timeLimit, difficulty, elapsedTime = 0;
+    let lives = 3, score = 0, energyDecrement, answer;
+    let speedIncrease = 1.01;
+    let energyWidth = 100;
+
+    document.getElementById("difficulty-select").style.display = "block";
+
+    function startGame(selectedDifficulty) {
+        difficulty = selectedDifficulty;
+        switch (difficulty) {
+            case 'easy': timeLimit = Infinity; break;
+            case 'medium': timeLimit = 40; break;
+            case 'hard': timeLimit = 30; break;
+            case 'very-hard': timeLimit = 20; break;
+        }
+        energyDecrement = difficulty === 'easy' ? 0 : 100 / timeLimit;
+        document.getElementById("difficulty-select").style.display = "none";
+        document.getElementById("game-area").style.display = "block";
+        document.getElementById("game-time").style.display = "block";
+
+        startTimers();
+        nextQuestion();
+    }
+
+    function startTimers() {
+        timer = setInterval(updateEnergy, 1000);
+        elapsedTimer = setInterval(() => document.getElementById("elapsed-time").innerText = ++elapsedTime, 1000);
+    }
+
+    function updateEnergy() {
+        if (difficulty === 'easy') return;
+        energyWidth -= energyDecrement;
+        if (energyWidth <= 0) {
+            energyWidth = 100;
+            if (--lives <= 0) endGame();
+            document.getElementById("lives").innerText = lives;
+            nextQuestion();
+        }
+        document.getElementById("energy").style.width = energyWidth + "%";
+    }
+
+    function nextQuestion() {
+        let num1, num2;
+        let operation = Math.random() < 0.5 ? "+" : "-";
+
+        if (operation === "+") {
+            // 던센 문제 생성
+            num1 = Math.floor(Math.random() * 900) + 100;
+            num2 = Math.floor(Math.random() * 900) + 100;
+            answer = num1 + num2;
+        } else {
+            // 볍센 문제 생성 (음수 방지)
+            num1 = Math.floor(Math.random() * 900) + 100;
+            num2 = Math.floor(Math.random() * num1); // num2가 num1보다 크지 않도록 제한
+            answer = num1 - num2;
+        }
+
+        // 각 자리수로 나누어 세로센 정렬
+        document.getElementById("hundreds-1").innerText = Math.floor(num1 / 100);
+        document.getElementById("tens-1").innerText = Math.floor((num1 % 100) / 10);
+        document.getElementById("units-1").innerText = num1 % 10;
+
+        document.getElementById("operation").innerText = operation;
+
+        document.getElementById("hundreds-2").innerText = Math.floor(num2 / 100);
+        document.getElementById("tens-2").innerText = Math.floor((num2 % 100) / 10);
+        document.getElementById("units-2").innerText = num2 % 10;
+
+        document.getElementById("answer").value = "";
+        energyWidth = 100;
+    }
+
+    function checkAnswer() {
+        let userAnswer = parseInt(document.getElementById("answer").value);
+        if (userAnswer === answer) {
+            score += difficulty === 'very-hard' ? 20 : difficulty === 'hard' ? 15 : difficulty === 'medium' ? 13 : 10;
+            document.getElementById("score").innerText = score;
+            displayReward();
+        } else {
+            if (--lives <= 0) endGame();
+            document.getElementById("lives").innerText = lives;
+            alert(`틀렸습니다! 정답은 ${answer} 입니다.`);
+        }
+        setTimeout(nextQuestion, 500); // Allow user to see if they were correct or not
+    }
+
+    function displayReward() {
+        let rewardMessage = "";
+        let chance = Math.random();
+        if (chance < 1 / 10000) rewardMessage = "5000원 상품권!";
+        else if (chance < 1 / 1000) rewardMessage = "3000원 상품권!";
+        else if (chance < 1 / 500) rewardMessage = "1회 면제권!";
+        document.getElementById("reward").innerText = rewardMessage;
+        setTimeout(() => document.getElementById("reward").innerText = "", 3000);
+    }
+
+    function endGame() {
+        clearInterval(timer);
+        clearInterval(elapsedTimer);
+        document.getElementById("game-area").style.display = "none";
+        document.getElementById("game-time").style.display = "none";
+        document.getElementById("game-end").style.display = "block";
+    }
+</script>
+
+</body>
+</html>
